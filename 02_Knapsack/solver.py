@@ -2,8 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from collections import namedtuple
-Item = namedtuple("Item", ['i', 'v', 'w'])
 
 
 def solve_it(input_data):
@@ -11,46 +9,40 @@ def solve_it(input_data):
 
     # parse the input
     lines = input_data.split('\n')
+    N, W = [int(x) for x in lines[0].split()]
 
-    firstLine = lines[0].split()
-    N = int(firstLine[0])
-    W = int(firstLine[1])
-
-    items = []
+    vals = np.empty(N, dtype=np.int32)
+    wts = np.empty(N, dtype=np.int32)
+    tkn = np.zeros(N, dtype=np.int8)
 
     for i in range(1, N+1):
-        line = lines[i]
-        parts = line.split()
-        items.append(Item(i-1, int(parts[0]), int(parts[1])))
+        vals[i-1], wts[i-1] = [int(x) for x in lines[i].split()]
 
-    N = len(items)
-    taken = [0 for i in range(N)]
-
-    dp = [[0 for j in range(W+1)] for i in range(N)]
+    dp = np.zeros((N, W+1), dtype=np.int64)
     for i in range(N):
         for j in range(W+1):
-            if j-items[i].w >= 0:
-                dp[i][j] = max(dp[i-1][j],
-                               dp[i-1][j-items[i].w] + items[i].v)
+            if j-wts[i] >= 0:
+                dp[i, j] = max(dp[i-1, j],
+                               dp[i-1, j-wts[i]] + vals[i])
             else:
-                dp[i][j] = dp[i-1][j]
+                dp[i, j] = dp[i-1, j]
 
     # for row in dp: # DBG
     #     print(row)
 
     i, j = N-1, W
     while i >= 0 and j >= 0:
-        # print(i, j, dp[i][j]) # DBG
-        if dp[i][j] == dp[i-1][j]:
+        # print(i, j, dp[i,j]) # DBG
+        if dp[i, j] == dp[i-1, j]:
             i -= 1
         else:
-            taken[i] = 1
-            j -= items[i].w
+            tkn[i] = 1
+            j -= wts[i]
             i -= 1
 
     # prepare the solution in the specified output format
-    output_data = str(dp[N-1][W]) + ' ' + str(0) + '\n'
-    output_data += ' '.join(map(str, taken))
+    output_data = str(dp[N-1, W]) + ' ' + str(0) + '\n'
+    output_data += ' '.join(map(str, tkn))
     return output_data
 
 
