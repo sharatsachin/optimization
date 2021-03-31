@@ -1,13 +1,40 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
-
 from collections import namedtuple
-from queue import LifoQueue
-import numpy as np
+import heapq
+
+from numpy import empty
 
 Item = namedtuple('Item', ['i', 'v', 'w', 'd'])
+# i -> index
+# v -> value
+# w -> weight
+# d -> value density
 
-Node = namedtuple('Node', ['ic', 'wl', 'sel', 'cv', 'oe'])
+
+class Node:
+    def __init__(self, ic, wl, sel, cv, oe) -> None:
+        self.ic = ic
+        self.wl = wl
+        self.sel = sel
+        self.cv = cv
+        self.oe = oe
+
+    def __lt__(self, other):
+        # return self.ic < other.ic  # breadth first search
+        # return self.cv + self.oe < other.cv + other.oe  # min heap
+        return self.cv + self.oe >= other.cv + other.oe  # max heap
+
+    def __repr__(self) -> str:
+        return f'Node(ic={self.ic}, wl={self.wl}, sel={self.sel}, cv={self.cv}, oe={self.oe})'
+
+
+# Node = namedtuple('Node', ['ic', 'wl', 'sel', 'cv', 'oe'])
+# ic -> items covered
+# wl -> weight left
+# sel -> selected indices
+# cv -> current value
+# oe -> optimistic estimate
 
 
 def calc_oe(items, cap):
@@ -22,8 +49,11 @@ def calc_oe(items, cap):
     return tot_v
 
 
-def run_dfs(lines):
+def solve_it(input_data):
+    # Modify this code to run your optimization algorithm
 
+    # parse the input
+    lines = input_data.split('\n')
     N, W = [int(x) for x in lines[0].split()]
     tkn = [0 for i in range(N)]
 
@@ -36,8 +66,8 @@ def run_dfs(lines):
     items.sort(key=lambda x: x.d, reverse=True)
     # print(items)
 
-    q = LifoQueue(0)
-    q.put(Node(ic=0, wl=W, sel=[], cv=0, oe=calc_oe(items, W)))
+    q = []
+    heapq.heappush(q, Node(ic=0, wl=W, sel=[], cv=0, oe=calc_oe(items, W)))
     # print(Node(ic=0, wl=W, sel=[], cv=0, oe=calc_oe(items, W)))
 
     cnt = 0
@@ -45,13 +75,14 @@ def run_dfs(lines):
     curr_best = 0
     sel_best = []
 
-    while not q.empty():
-        node = q.get()
+    while q:
+        # print(q)
+        node = heapq.heappop(q)
         # print(node)
 
         # if cnt % 10000 == 0:
         #     print(cnt, node, curr_best)
-        if cnt == 50000:
+        if cnt == 1000000:
             optimal = 0
             break
         cnt += 1
@@ -68,7 +99,7 @@ def run_dfs(lines):
                         cv=node.cv,
                         oe=calc_oe(items[c_i+1:], node.wl))
             if drop.wl >= 0 and drop.cv + drop.oe > curr_best:
-                q.put(drop)
+                heapq.heappush(q, drop)
 
             pick = Node(ic=c_i+1,
                         wl=node.wl - items[c_i].w,
@@ -76,67 +107,15 @@ def run_dfs(lines):
                         cv=node.cv + items[c_i].v,
                         oe=calc_oe(items[c_i+1:], node.wl - items[c_i].w))
             if pick.wl >= 0 and pick.cv + pick.oe > curr_best:
-                q.put(pick)
+                heapq.heappush(q, pick)
 
     for x in sel_best:
         tkn[x] = 1
 
-    return curr_best, 0, tkn
-
-
-def run_dp(lines):
-
-    N, W = [int(x) for x in lines[0].split()]
-
-    # stores array of values for each item
-    vals = np.empty(N, dtype=np.int32)
-    # stores array of weights for each item
-    wts = np.empty(N, dtype=np.int32)
-    # denotes wether item will be chosen in final selection or not
-    tkn = np.zeros(N, dtype=np.int8)
-
-    for i in range(1, N+1):
-        vals[i-1], wts[i-1] = [int(x) for x in lines[i].split()]
-
-    dp = np.zeros((N, W+1), dtype=np.int64)
-    for i in range(N):
-        for j in range(W+1):
-            if j-wts[i] >= 0:
-                dp[i, j] = max(dp[i-1, j],
-                               dp[i-1, j-wts[i]] + vals[i])
-            else:
-                dp[i, j] = dp[i-1, j]
-
-    # for row in dp: # DBG
-    #     print(row)
-
-    i, j = N-1, W
-    while i >= 0 and j >= 0:
-        # print(i, j, dp[i,j]) # DBG
-        if dp[i, j] == dp[i-1, j]:
-            i -= 1
-        else:
-            tkn[i] = 1
-            j -= wts[i]
-            i -= 1
-
-    return dp[N-1, W], 1, tkn
-
-
-def solve_it(input_data):
-    # Modify this code to run your optimization algorithm
-
-    # parse the input
-    lines = input_data.split('\n')
-    N, W = [int(x) for x in lines[0].split()]
-
-    if (N * W) > 25_000_000:
-        sol, opt, tkn = run_dfs(lines)
-    else:
-        sol, opt, tkn = run_dp(lines)
+    print(cnt)
 
     # prepare the solution in the specified output format
-    output_data = str(sol) + ' ' + str(opt) + '\n'
+    output_data = str(curr_best) + ' ' + str(optimal) + '\n'
     output_data += ' '.join(map(str, tkn))
     return output_data
 
